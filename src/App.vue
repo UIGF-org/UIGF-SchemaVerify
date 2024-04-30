@@ -1,30 +1,193 @@
-<script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
-</script>
-
 <template>
-  <div>
-    <a href="https://vitejs.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <div class="app-container">
+    <div class="app-title">
+      <img src="/logo.png" alt="logo"/>
+      <span>UIGF Schema Verify Tool</span>
+      <a-upload :show-file-list="false" :custom-request="uploadFile"></a-upload>
+      <a-button type="primary" @click="verify">验证</a-button>
+    </div>
+    <div class="verify-result" v-if="verifyResult !== ''">
+      <a-alert type="success" v-if="isSucceed">Verification passed</a-alert>
+      <a-alert type="error" v-else>
+        <span v-if="typeof verifyResult === 'string'">{{ verifyResult }}</span>
+        <ul v-else>
+          <li v-for="error in verifyResult" :key="error.instancePath">
+            <span class="error-path">{{ error.instancePath || error.schemaPath }}:&emsp;</span>
+            <span class="error-message">{{ error.message }}</span>
+            <span style="margin-left: auto" v-if="error.instancePath!==''">
+              <a-button @click="showErrData(error)" type="text">查看错误数据</a-button>
+            </span>
+          </li>
+        </ul>
+      </a-alert>
+    </div>
+    <div class="verify-body">
+      <div class="verify-item">
+        <div class="verify-title">File Content</div>
+        <a-textarea class="verify-box" v-model="fileContent" readonly auto-size/>
+      </div>
+      <div class="verify-item">
+        <div class="verify-title">Schema UIGF v3.0</div>
+        <a-textarea class="verify-box" :default-value="JSON.stringify(schema, null, 2)" readonly auto-size/>
+      </div>
+    </div>
   </div>
-  <HelloWorld msg="Vite + Vue" />
 </template>
 
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+<script setup lang="ts">
+import Ajv, {ErrorObject} from "ajv";
+import schema from "./source/uigf-v3-schema.json";
+import {computed, ref} from "vue";
+import {RequestOption, UploadRequest} from "@arco-design/web-vue";
+
+const ajv = new Ajv();
+
+const validate = ajv.compile(schema);
+
+// 文件内容
+const fileContent = ref<string>("");
+//  验证结果
+const verifyResult = ref<string | Array<ErrorObject>>("");
+// 是否验证成功
+const isSucceed = computed(() => {
+  if (verifyResult.value === "Verification passed") {
+    return true;
+  }
+  if (verifyResult.value === "Verification failed") {
+    return false;
+  }
+  if (verifyResult.value.length) {
+    return false;
+  }
+  return true;
+})
+
+// 上传文件
+function uploadFile(option: RequestOption): UploadRequest {
+  const file = option.fileItem.file;
+  if (!file) {
+    option.onError();
+    return {};
+  }
+  const reader = new FileReader();
+  try {
+    reader.onload = (e) => {
+      fileContent.value = e.target?.result as string;
+      verify();
+    };
+    reader.readAsText(file);
+    option.onSuccess();
+  } catch (e) {
+    option.onError();
+  }
+  return {};
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+
+// 验证
+function verify() {
+  try {
+    const data = JSON.parse(fileContent.value);
+    const valid = validate(data);
+    if (valid) {
+      verifyResult.value = "Verification passed";
+      return;
+    }
+    verifyResult.value = validate.errors || "Verification failed";
+    console.log(validate.errors);
+  } catch (e) {
+    verifyResult.value = "Verification failed\n" + e;
+  }
 }
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+
+// 显示错误数据
+function showErrData(error: ErrorObject) {
+  const path = error.instancePath.split("/").filter((item) => item);
+  let data = JSON.parse(fileContent.value);
+  for (const key of path) {
+    data = data[key];
+  }
+  alert(JSON.stringify(data, null, 2));
+}
+</script>
+
+
+<style lang="css" scoped>
+.app-container {
+  position: relative;
+  margin: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 20px;
+}
+
+.app-title {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  column-gap: 10px;
+  flex-wrap: wrap;
+}
+
+.app-title img {
+  width: 40px;
+  height: 40px;
+}
+
+.app-title span {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.verify-body {
+  position: relative;
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.verify-item {
+  width: 48%;
+  height: 100%;
+}
+
+.verify-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.verify-box {
+  position: relative;
+  max-width: 100%;
+  width: 100%;
+  height: 500px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  overflow-y: auto;
+}
+
+.verify-result {
+  width: 100%;
+}
+
+.verify-result ul {
+  list-style: none;
+  padding: 0;
+}
+
+.verify-result li {
+  margin-top: 10px;
+}
+
+.error-path {
+  font-weight: bold;
+  color: #D14748;
+}
+
+.error-message {
+  color: #EC407A;
 }
 </style>

@@ -9,9 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "ajv": "^8.13.0",
     "vue": "^3.4.21"
   },
   "devDependencies": {
+    "@arco-design/web-vue": "^2.55.1",
     "@vitejs/plugin-vue": "^5.0.4",
     "typescript": "^5.2.2",
     "vite": "^5.2.0",
