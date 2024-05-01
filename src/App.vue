@@ -4,7 +4,7 @@
       <img src="/logo.png" alt="logo"/>
       <span>UIGF Schema Verify Tool</span>
       <a-upload :show-file-list="false" :custom-request="uploadFile"></a-upload>
-      <a-button type="primary" @click="verify">验证</a-button>
+      <a-button type="primary" @click="verify()">验证</a-button>
     </div>
     <div class="verify-result" v-if="verifyResult !== ''">
       <a-alert type="success" v-if="isSucceed">Verification passed</a-alert>
@@ -27,23 +27,48 @@
         <a-textarea class="verify-box" v-model="fileContent" readonly auto-size/>
       </div>
       <div class="verify-item">
-        <div class="verify-title">Schema UIGF v3.0</div>
-        <a-textarea class="verify-box" :default-value="JSON.stringify(schema, null, 2)" readonly auto-size/>
+        <div class="verify-title">
+          <span>Schema</span>
+          <a-select v-model="curSchema" style="width: 200px">
+            <a-option :value="SchemaType.UIGF">{{ SchemaType.UIGF.toUpperCase() }}</a-option>
+            <a-option :value="SchemaType.UIAF">{{ SchemaType.UIAF.toUpperCase() }}</a-option>
+            <a-option :value="SchemaType.SRGF">{{ SchemaType.SRGF.toUpperCase() }}</a-option>
+          </a-select>
+        </div>
+        <a-textarea class="verify-box" :model-value="JSON.stringify(schema, null, 2)" readonly auto-size/>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import Ajv, {ErrorObject} from "ajv";
-import schema from "./source/uigf-v3-schema.json";
-import {computed, ref} from "vue";
+import Ajv, {ErrorObject, ValidateFunction} from "ajv";
+import {computed, onMounted, ref, watch} from "vue";
 import {RequestOption, UploadRequest} from "@arco-design/web-vue";
+import {getSchema, SchemaType} from "./tools/schemaSwitch.ts";
 
-const ajv = new Ajv();
+const ajv = new Ajv({
+  strict: false,
+});
 
-const validate = ajv.compile(schema);
+const validate = ref<ValidateFunction | undefined>(undefined);
 
+// 当前schema类型
+const curSchema = ref<SchemaType>(SchemaType.UIGF);
+
+onMounted(async () => {
+  schema.value = await getSchema(curSchema.value);
+  validate.value = ajv.compile(schema.value);
+});
+
+// 监听schema类型变化
+watch(curSchema, async (value: SchemaType) => {
+  schema.value = await getSchema(value);
+  validate.value = ajv.compile(schema.value);
+}, {immediate: true});
+
+// schema 文件内容
+const schema = ref<any>({});
 // 文件内容
 const fileContent = ref<string>("");
 //  验证结果
@@ -56,10 +81,7 @@ const isSucceed = computed(() => {
   if (verifyResult.value === "Verification failed") {
     return false;
   }
-  if (verifyResult.value.length) {
-    return false;
-  }
-  return true;
+  return !verifyResult.value.length;
 })
 
 // 上传文件
@@ -85,15 +107,19 @@ function uploadFile(option: RequestOption): UploadRequest {
 
 // 验证
 function verify() {
+  if (validate.value === undefined) {
+    console.error("Schema is not loaded");
+    return;
+  }
   try {
     const data = JSON.parse(fileContent.value);
-    const valid = validate(data);
+    const valid = validate.value(data);
     if (valid) {
       verifyResult.value = "Verification passed";
       return;
     }
-    verifyResult.value = validate.errors || "Verification failed";
-    console.log(validate.errors);
+    verifyResult.value = validate.value.errors || "Verification failed";
+    console.log(validate.value.errors);
   } catch (e) {
     verifyResult.value = "Verification failed\n" + e;
   }
@@ -156,6 +182,10 @@ function showErrData(error: ErrorObject) {
   font-size: 16px;
   font-weight: bold;
   margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  column-gap: 10px;
 }
 
 .verify-box {

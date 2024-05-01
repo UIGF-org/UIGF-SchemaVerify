@@ -39,10 +39,7 @@
           "title": "Region timezone offset"
         }
       },
-      "required": [
-        "uid",
-        "uigf_version"
-      ],
+      "required": ["uid", "uigf_version"],
       "title": "UIGF Export Information"
     },
     "list": {
@@ -88,21 +85,12 @@
             "title": "Internal ID of the record"
           }
         },
-        "required": [
-          "uigf_gacha_type",
-          "gacha_type",
-          "id",
-          "item_id",
-          "time"
-        ],
+        "required": ["uigf_gacha_type", "gacha_type", "id", "item_id", "time"],
         "title": "UIGF Item"
       },
       "title": "Item List"
     }
   },
-  "required": [
-    "info",
-    "list"
-  ],
+  "required": ["info", "list"],
   "title": "UIGF Root Object"
 }
