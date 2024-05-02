@@ -5,6 +5,11 @@
       <span>UIGF Schema Verify Tool</span>
       <a-upload :show-file-list="false" :custom-request="uploadFile"></a-upload>
       <a-button type="primary" @click="verify()">验证</a-button>
+      <a-select v-model="curSchema" style="width: 100px">
+        <a-option :value="SchemaType.UIGF">{{ SchemaType.UIGF.toUpperCase() }}</a-option>
+        <a-option :value="SchemaType.UIAF">{{ SchemaType.UIAF.toUpperCase() }}</a-option>
+        <a-option :value="SchemaType.SRGF">{{ SchemaType.SRGF.toUpperCase() }}</a-option>
+      </a-select>
     </div>
     <div class="verify-result" v-if="verifyResult !== ''">
       <a-alert type="success" v-if="isSucceed">Verification passed</a-alert>
@@ -29,11 +34,6 @@
       <div class="verify-item">
         <div class="verify-title">
           <span>Schema</span>
-          <a-select v-model="curSchema" style="width: 200px">
-            <a-option :value="SchemaType.UIGF">{{ SchemaType.UIGF.toUpperCase() }}</a-option>
-            <a-option :value="SchemaType.UIAF">{{ SchemaType.UIAF.toUpperCase() }}</a-option>
-            <a-option :value="SchemaType.SRGF">{{ SchemaType.SRGF.toUpperCase() }}</a-option>
-          </a-select>
         </div>
         <a-textarea class="verify-box" :model-value="JSON.stringify(schema, null, 2)" readonly auto-size/>
       </div>
@@ -179,9 +179,18 @@ function showErrData(error: ErrorObject) {
   justify-content: space-between;
 }
 
+@media (max-width: 768px) {
+  .verify-body {
+    flex-direction: column;
+  }
+
+  .verify-body > .verify-item {
+    width: 100%;
+  }
+}
+
 .verify-item {
-  width: 48%;
-  height: 100%;
+  width: 49%;
 }
 
 .verify-title {
@@ -195,10 +204,8 @@ function showErrData(error: ErrorObject) {
 }
 
 .verify-box {
-  position: relative;
-  max-width: 100%;
   width: 100%;
-  height: 500px;
+  height: calc(100vh - 200px);
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 5px;
