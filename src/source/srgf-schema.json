@@ -69,7 +69,7 @@
           },
           "time": {
             "type": "string",
-            "description": "Time of item achieved"
+            "description": "Time when the item was obtained. This MUST BE THE String typed value captured intact from the gacha record webpage WITHOUT ANY CONVERTION TO ANY DATE TYPES. Any conversion of such can cause potential timezone mistakes if the device time zone differs from the server time zone, unless special treatments are applied by individual app devs."
           },
           "name": {
             "type": "string",
