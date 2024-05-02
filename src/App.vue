@@ -57,6 +57,12 @@ const validate = ref<ValidateFunction | undefined>(undefined);
 const curSchema = ref<SchemaType>(SchemaType.UIGF);
 
 onMounted(async () => {
+  const url = new URL(window.location.href);
+  const schemaType = url.searchParams.get("schema");
+  const check = [SchemaType.UIGF, SchemaType.UIAF, SchemaType.SRGF];
+  if (check.includes(schemaType as SchemaType)) {
+    curSchema.value = schemaType as SchemaType;
+  }
   schema.value = await getSchema(curSchema.value);
   validate.value = ajv.compile(schema.value);
 });
