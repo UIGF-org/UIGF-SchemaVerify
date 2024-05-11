@@ -47,9 +47,7 @@ import {computed, onMounted, ref, watch} from "vue";
 import {RequestOption, UploadRequest} from "@arco-design/web-vue";
 import {getSchema, SchemaType} from "./tools/schemaSwitch.ts";
 
-const ajv = new Ajv({
-  strict: false,
-});
+const ajv = new Ajv();
 
 const validate = ref<ValidateFunction | undefined>(undefined);
 
@@ -63,15 +61,17 @@ onMounted(async () => {
   if (check.includes(schemaType as SchemaType)) {
     curSchema.value = schemaType as SchemaType;
   }
-  schema.value = await getSchema(curSchema.value);
-  validate.value = ajv.compile(schema.value);
+  await freshSchema(curSchema.value);
 });
 
-// 监听schema类型变化
-watch(curSchema, async (value: SchemaType) => {
-  schema.value = await getSchema(value);
+// freshSchema
+async function freshSchema(schemaType: SchemaType = curSchema.value) {
+  schema.value = await getSchema(schemaType);
   validate.value = ajv.compile(schema.value);
-}, {immediate: true});
+}
+
+// 监听schema类型变化
+watch(curSchema, async (value: SchemaType) => await freshSchema(value));
 
 // schema 文件内容
 const schema = ref<any>({});
@@ -135,8 +135,9 @@ function verify() {
 function showErrData(error: ErrorObject) {
   const path = error.instancePath.split("/").filter((item) => item);
   let data = JSON.parse(fileContent.value);
-  for (const key of path) {
-    data = data[key];
+  // 最多深入两层
+  for (let i = 0; i < Math.min(path.length, 2); i++) {
+    data = data[path[i]];
   }
   alert(JSON.stringify(data, null, 2));
 }
