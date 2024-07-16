@@ -4,6 +4,10 @@ import conversion from '@/views/conversion.vue';
 
 const routes = [
   {
+    path: '/',
+    redirect: 'Conv'
+  },
+  {
     path: '/verify',
     name: 'Verify',
     component: verify,

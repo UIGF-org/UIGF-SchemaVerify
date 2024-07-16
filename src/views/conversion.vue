@@ -17,11 +17,15 @@
         <div class="format-container">
             <div class="format-title">转换后格式</div>
             <a-select v-model="endFormat" class="format-select" defaultValue="UIGF-4.0">
-                <a-option value="UIGF-4.0">UIGF-4.0</a-option>
-                <a-option value="UIGF-3.0">UIGF-3.0</a-option>
-                <a-option value="SRGF-1.0">SRGF-1.0</a-option>
+                <a-option value="uigf4">UIGF-4.0</a-option>
+                <a-option value="uigf3">UIGF-3.0</a-option>
+                <a-option value="srgf1">SRGF-1.0</a-option>
             </a-select>
         </div>
+        <a-collapse style="width: 100%; item-align: center;" v-if='uploaded'>
+            <a-collapse-item header="文件信息" key="1">
+            </a-collapse-item>
+        </a-collapse>
         <div class="verify-body">
             <div class="verify-item">
                 <div class="verify-title">待转换的文件内容</div>
@@ -38,95 +42,93 @@
 </template>
 
 <script lang="js" setup>
-    import {
-        ref,
-        watch
-    } from 'vue';
-    import {
-        Message
-    } from '@arco-design/web-vue';
-    import { useRouter } from 'vue-router';
+import { ref, watch } from 'vue';
+import { Message } from '@arco-design/web-vue';
+import { useRouter } from 'vue-router';
 
-    const router = useRouter();
-    const selectedRoute = ref('conv'); // 默认选择转换页面
+const router = useRouter();
+const selectedRoute = ref('conv'); // 默认选择转换页面
 
-    watch(selectedRoute, (newRoute) => {
-      router.push(`/${newRoute}`);
-    });
-    const endFormat = ref('UIGF-4.0');
-    const fileContent = ref(''); // 假定文件内容会在文件上传后填充
-    const convertedContent = ref(''); // 转换后的文件内容
-    
-    // 文件上传处理函数
-    function uploadFile(option) {
-        const file = option.fileItem.file;
-        if (!file) {
-            option.onError();
-            return;
-        }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            fileContent.value = e.target?.result;
-        };
-        reader.onerror = () => {
-            option.onError();
-        };
-        reader.readAsText(file);
-        option.onSuccess();
+watch(selectedRoute, (newRoute) => {
+  router.push(`/${newRoute}`);
+});
+
+const endFormat = ref('uigf4'); // 默认格式
+const fileContent = ref(''); // 假定文件内容会在文件上传后填充
+const convertedContent = ref(''); // 转换后的文件内容
+const uploaded = ref(false); // 确保拼写正确
+
+// 文件上传处理函数
+function uploadFile(option) {
+    const file = option.fileItem.file;
+    if (!file) {
+        option.onError();
+        return;
     }
-
-    // 转换函数
-    const conv = () => {
-        try {
-            // 解析为json
-            let content = JSON.parse(fileContent.value);
-        } catch (error) {
-            Message.error("不是有效的json");
-            console.error("转换失败:", error);
-            return;
-        }
-
-        if (endFormat.value === 'UIGF-4.0') {
-            // 进行UIGF-4.0格式的转换
-            content = convertToUIGF4(content);
-        } else if (endFormat.value === 'UIGF-3.0') {
-            // 进行UIGF-3.0格式的转换
-            content = convertToUIGF3(content);
-        } else if (endFormat.value === 'SRGF-1.0') {
-            // 进行SRGF-1.0格式的转换
-            content = convertToSRGF1(content);
-        }
-        convertedContent.value = JSON.stringify(content, null, 2);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        fileContent.value = e.target?.result;
+        option.onSuccess(); // 确保在读取完成后再调用
     };
-
-    // 下载文件函数
-    const downloadFile = () => {
-        const blob = new Blob([convertedContent.value], {
-            type: 'application/json'
-        });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `converted_file_${endFormat.value}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    reader.onerror = () => {
+        option.onError();
     };
+    reader.readAsText(file);
+}
 
-    // 示例转换函数
-    const convertToUIGF4 = (content) => {
-        // 实现UIGF-4.0格式的转换逻辑
-        return content;
-    };
+// 转换函数
+const conv = () => {
+    let content; // 在函数作用域内声明 content 变量
+    try {
+        // 解析为json
+        content = JSON.parse(fileContent.value);
+    } catch (error) {
+        Message.error("不是有效的json");
+        console.error("转换失败:", error);
+        return;
+    }
+    uploaded.value = true;
+    if (endFormat.value === 'uigf4') {
+        // 进行UIGF-4.0格式的转换
+        content = convertToUIGF4(content);
+    } else if (endFormat.value === 'uigf3') {
+        // 进行UIGF-3.0格式的转换
+        content = convertToUIGF3(content);
+    } else if (endFormat.value === 'srgf1') {
+        // 进行SRGF-1.0格式的转换
+        content = convertToSRGF1(content);
+    }
+    convertedContent.value = JSON.stringify(content, null, 2);
+};
 
-    const convertToUIGF3 = (content) => {
-        // 实现UIGF-3.0格式的转换逻辑
-        return content;
-    };
+// 下载文件函数
+const downloadFile = () => {
+    const blob = new Blob([convertedContent.value], {
+        type: 'application/json'
+    });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `converted_file_${endFormat.value}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
 
-    const convertToSRGF1 = (content) => {
-        // 实现SRGF-1.0格式的转换逻辑
-        return content;
-    };
+// 示例转换函数
+const convertToUIGF4 = (content) => {
+    // 实现UIGF-4.0格式的转换逻辑
+    return content;
+};
+
+const convertToUIGF3 = (content) => {
+    // 实现UIGF-3.0格式的转换逻辑
+    return content;
+};
+
+const convertToSRGF1 = (content) => {
+    // 实现SRGF-1.0格式的转换逻辑
+    return content;
+};
 </script>
 
 <style scoped>
