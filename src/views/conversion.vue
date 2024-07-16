@@ -37,7 +37,7 @@
     </div>
 </template>
 
-<script lang="js">
+<script lang="js" setup>
     import {
         ref,
         watch
@@ -49,7 +49,7 @@
 
     const router = useRouter();
     const selectedRoute = ref('conv'); // 默认选择转换页面
-    
+
     watch(selectedRoute, (newRoute) => {
       router.push(`/${newRoute}`);
     });
