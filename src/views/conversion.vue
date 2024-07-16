@@ -56,10 +56,10 @@ watch(selectedRoute, (newRoute) => {
 const endFormat = ref('uigf4'); // 默认格式
 const fileContent = ref(''); // 假定文件内容会在文件上传后填充
 const convertedContent = ref(''); // 转换后的文件内容
-const uploaded = ref(false); // 确保拼写正确
+const uploaded = ref(false); // 文件是否已上传标志
 
 // 文件上传处理函数
-function uploadFile(option) {
+async function uploadFile(option) {
     const file = option.fileItem.file;
     if (!file) {
         option.onError();
@@ -77,27 +77,29 @@ function uploadFile(option) {
 }
 
 // 转换函数
-const conv = () => {
+const conv = async () => {
     let content; // 在函数作用域内声明 content 变量
     try {
-        // 解析为json
+        // 解析为 JSON
         content = JSON.parse(fileContent.value);
     } catch (error) {
-        Message.error("不是有效的json");
+        Message.error("不是有效的 JSON");
         console.error("转换失败:", error);
         return;
     }
+
     uploaded.value = true;
     if (endFormat.value === 'uigf4') {
-        // 进行UIGF-4.0格式的转换
-        content = convertToUIGF4(content);
+        // 进行 UIGF-4.0 格式的转换
+        content = await convertToUIGF4(content);
     } else if (endFormat.value === 'uigf3') {
-        // 进行UIGF-3.0格式的转换
-        content = convertToUIGF3(content);
+        // 进行 UIGF-3.0 格式的转换
+        content = await convertToUIGF3(content);
     } else if (endFormat.value === 'srgf1') {
-        // 进行SRGF-1.0格式的转换
-        content = convertToSRGF1(content);
+        // 进行 SRGF-1.0 格式的转换
+        content = await convertToSRGF1(content);
     }
+
     convertedContent.value = JSON.stringify(content, null, 2);
 };
 
@@ -115,18 +117,27 @@ const downloadFile = () => {
 };
 
 // 示例转换函数
-const convertToUIGF4 = (content) => {
-    // 实现UIGF-4.0格式的转换逻辑
+const convertToUIGF4 = async (content) => {
+    if (!['v3.0', 'v4.0', 'v2.4', 'v2.3'].includes(content.info.uigf_version)) {
+        Message.error(content.info.uigf_version + "不支持");
+        return;
+    }
+
+    // 实现 UIGF-4.0 格式的转换逻辑
     return content;
 };
 
-const convertToUIGF3 = (content) => {
-    // 实现UIGF-3.0格式的转换逻辑
+const convertToUIGF3 = async (content) => {
+    if (!['v3.0', 'v4.0', 'v2.4', 'v2.3'].includes(content.uigf_version)) {
+        console.log('ERROR');
+    }
+
+    // 实现 UIGF-3.0 格式的转换逻辑
     return content;
 };
 
-const convertToSRGF1 = (content) => {
-    // 实现SRGF-1.0格式的转换逻辑
+const convertToSRGF1 = async (content) => {
+    // 实现 SRGF-1.0 格式的转换逻辑
     return content;
 };
 </script>

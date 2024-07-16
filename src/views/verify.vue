@@ -6,7 +6,8 @@
             <a-upload :show-file-list="false" :custom-request="uploadFile"></a-upload>
             <a-button type="primary" @click="verify">验证</a-button>
             <a-select v-model="curSchema" style="width: 100px">
-                <a-option :value="SchemaType.UIGF">{{ SchemaType.UIGF.toUpperCase() }}</a-option>
+                <a-option :value="SchemaType.UIGF4">{{ SchemaType.UIGF4.toUpperCase() }}</a-option>
+                <a-option :value="SchemaType.UIGF3">{{ SchemaType.UIGF3.toUpperCase() }}</a-option>
                 <a-option :value="SchemaType.UIAF">{{ SchemaType.UIAF.toUpperCase() }}</a-option>
                 <a-option :value="SchemaType.SRGF">{{ SchemaType.SRGF.toUpperCase() }}</a-option>
             </a-select>
@@ -76,7 +77,7 @@
 
     // 定义响应式变量
     const validate = ref < ValidateFunction | undefined > (undefined);
-    const curSchema = ref < SchemaType > (SchemaType.UIGF);
+    const curSchema = ref < SchemaType > (SchemaType.UIGF4);
     const schema = ref < any > ({});
     const fileContent = ref < string > ('');
     const verifyResult = ref < string | Array < ErrorObject >> ('');
@@ -100,7 +101,7 @@
     onMounted(async () => {
         const url = new URL(window.location.href);
         const schemaType = url.searchParams.get('schema');
-        const check = [SchemaType.UIGF, SchemaType.UIAF, SchemaType.SRGF];
+        const check = [SchemaType.UIGF3, SchemaType.UIAF, SchemaType.SRGF, SchemaType.UIGF4];
         if (check.includes(schemaType as SchemaType)) {
             curSchema.value = schemaType as SchemaType;
         }
