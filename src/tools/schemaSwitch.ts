@@ -3,8 +3,9 @@
  */
 export enum SchemaType {
     UIAF = 'uiaf',
-    UIGF = 'uigf',
+    UIGF3 = 'uigf3',
     SRGF = 'srgf',
+    UIGF4 = 'uigf4'
 }
 
 /**
