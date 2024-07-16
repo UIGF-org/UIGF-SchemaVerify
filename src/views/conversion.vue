@@ -45,6 +45,7 @@
 import { ref, watch } from 'vue';
 import { Message } from '@arco-design/web-vue';
 import { useRouter } from 'vue-router';
+import { allKeysExist } from '../tools/utils.js';
 
 const router = useRouter();
 const selectedRoute = ref('conv'); // 默认选择转换页面
@@ -119,7 +120,7 @@ const downloadFile = () => {
 // 示例转换函数
 const convertToUIGF4 = async (content) => {
     if (!['v3.0', 'v4.0', 'v2.4', 'v2.3'].includes(content.info.uigf_version)) {
-        Message.error(content.info.uigf_version + "不支持");
+        Message.error("不支持将 UIGF" + content.info.uigf_version + " 转换为 UIGF v4.0");
         return;
     }
 
@@ -128,6 +129,10 @@ const convertToUIGF4 = async (content) => {
 };
 
 const convertToUIGF3 = async (content) => {
+    if (!['v3.0', 'v4.0', 'v2.4', 'v2.3'].includes(content.info.uigf_version)) {
+        Message.error("不支持将 UIGF" + content.info.uigf_version + " 转换为 UIGF v3.0");
+        return;
+    }
     if (!['v3.0', 'v4.0', 'v2.4', 'v2.3'].includes(content.uigf_version)) {
         console.log('ERROR');
     }

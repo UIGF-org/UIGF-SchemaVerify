@@ -55,7 +55,7 @@
         onMounted,
         watch
     } from 'vue';
-    import Ajv, {
+    import Ajv2019, {
         ErrorObject,
         ValidateFunction
     } from 'ajv';
@@ -66,14 +66,14 @@
     import {
         getSchema,
         SchemaType
-    } from '@/tools/schemaSwitch';
+    } from '../tools/schemaSwitch';
     
     import { useRouter } from 'vue-router';
 
     const router = useRouter();
     const selectedRoute = ref('verify'); // 默认选择转换页面
 
-    const ajv = new Ajv();
+    const ajv = new Ajv2019();
 
     // 定义响应式变量
     const validate = ref < ValidateFunction | undefined > (undefined);
