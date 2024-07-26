@@ -3,12 +3,17 @@
     <div class="app-title">
       <img src="/logo.png" alt="logo"/>
       <span>UIGF Schema Verify Tool</span>
+    </div>
+    <div class="app-actions">
       <a-upload :show-file-list="false" :custom-request="uploadFile"></a-upload>
       <a-button type="primary" @click="verify()">验证</a-button>
       <a-select v-model="curSchema" style="width: 100px">
         <a-option :value="SchemaType.UIGF">{{ SchemaType.UIGF.toUpperCase() }}</a-option>
         <a-option :value="SchemaType.UIAF">{{ SchemaType.UIAF.toUpperCase() }}</a-option>
         <a-option :value="SchemaType.SRGF">{{ SchemaType.SRGF.toUpperCase() }}</a-option>
+      </a-select>
+      <a-select v-model="curVersion" style="width: 100px">
+        <a-option v-for="version in schemaList[curSchema]" :key="version" :value="version">{{ version }}</a-option>
       </a-select>
     </div>
     <div class="verify-result" v-if="verifyResult !== ''">
@@ -35,7 +40,7 @@
         <div class="verify-title">
           <span>Schema</span>
         </div>
-        <a-textarea class="verify-box" :model-value="JSON.stringify(schema, null, 2)" readonly auto-size/>
+        <a-textarea class="verify-box" v-model="curSchemaContent" readonly auto-size/>
       </div>
     </div>
   </div>
@@ -45,7 +50,7 @@
 import Ajv, {ErrorObject, ValidateFunction} from "ajv";
 import {computed, onMounted, ref, watch} from "vue";
 import {RequestOption, UploadRequest} from "@arco-design/web-vue";
-import {getSchema, SchemaType} from "./tools/schemaSwitch.ts";
+import {getSchema, schemaList, SchemaType} from "./tools/schemaSwitch.ts";
 
 const ajv = new Ajv();
 
@@ -53,6 +58,8 @@ const validate = ref<ValidateFunction | undefined>(undefined);
 
 // 当前schema类型
 const curSchema = ref<SchemaType>(SchemaType.UIGF);
+const curVersion = ref<string>("");
+const curSchemaContent = computed(() => JSON.stringify(schema.value, null, 2));
 
 onMounted(async () => {
   const url = new URL(window.location.href);
@@ -65,13 +72,20 @@ onMounted(async () => {
 });
 
 // freshSchema
-async function freshSchema(schemaType: SchemaType = curSchema.value) {
-  schema.value = await getSchema(schemaType);
+async function freshSchema(schemaType: SchemaType = curSchema.value, version: string = curVersion.value) {
+  const versions = schemaList[schemaType];
+  if (!versions.includes(version)) {
+    curVersion.value = versions[0];
+  }
+  schema.value = await getSchema(schemaType, curVersion.value);
   validate.value = ajv.compile(schema.value);
 }
 
 // 监听schema类型变化
 watch(curSchema, async (value: SchemaType) => await freshSchema(value));
+
+// 监听版本变化
+watch(curVersion, async (value: string) => await freshSchema(curSchema.value, value));
 
 // schema 文件内容
 const schema = ref<any>({});
@@ -94,6 +108,11 @@ const isSucceed = computed(() => {
 function uploadFile(option: RequestOption): UploadRequest {
   const file = option.fileItem.file;
   if (!file) {
+    option.onError();
+    return {};
+  }
+  if (file.name.split('.').pop() !== 'json') {
+    alert('Please upload a json file');
     option.onError();
     return {};
   }
@@ -171,6 +190,14 @@ function showErrData(error: ErrorObject) {
 .app-title span {
   font-size: 20px;
   font-weight: bold;
+}
+
+.app-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  gap: 10px;
 }
 
 .verify-body {
