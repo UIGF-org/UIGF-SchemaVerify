@@ -33,12 +33,7 @@
         }
       },
       "description": "Exporter's information",
-      "required": [
-        "srgf_version",
-        "uid",
-        "lang",
-        "region_time_zone"
-      ]
+      "required": ["srgf_version", "uid", "lang", "region_time_zone"]
     },
     "list": {
       "type": "array",
@@ -52,12 +47,7 @@
           "gacha_type": {
             "type": "string",
             "description": "Gacha pool type",
-            "enum": [
-              "1",
-              "2",
-              "11",
-              "12"
-            ]
+            "enum": ["1", "2", "11", "12"]
           },
           "item_id": {
             "type": "string",
@@ -88,19 +78,10 @@
             "description": "Internal record ID"
           }
         },
-        "required": [
-          "gacha_id",
-          "gacha_type",
-          "item_id",
-          "time",
-          "id"
-        ]
+        "required": ["gacha_id", "gacha_type", "item_id", "time", "id"]
       },
       "description": "Gacha record data"
     }
   },
-  "required": [
-    "info",
-    "list"
-  ]
+  "required": ["info", "list"]
 }

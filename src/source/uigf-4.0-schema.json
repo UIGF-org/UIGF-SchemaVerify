@@ -85,25 +85,12 @@
                 "uigf_gacha_type": {
                   "type": "string",
                   "description": "UIGF gacha type, used to distinguish between different gacha types that have the same pity calculation",
-                  "enum": [
-                    "100",
-                    "200",
-                    "301",
-                    "302",
-                    "500"
-                  ]
+                  "enum": ["100", "200", "301", "302", "500"]
                 },
                 "gacha_type": {
                   "type": "string",
                   "description": "Gacha type, returned by MiHoYo API",
-                  "enum": [
-                    "100",
-                    "200",
-                    "301",
-                    "302",
-                    "400",
-                    "500"
-                  ]
+                  "enum": ["100", "200", "301", "302", "400", "500"]
                 },
                 "item_id": {
                   "type": "string",
@@ -131,7 +118,10 @@
                 },
                 "id": {
                   "type": "string",
-                  "description": "The internal ID of the record, returned by MiHoYo API"
+                  "description": "The internal ID of the record, returned by MiHoYo API",
+                  "maxLength": 19,
+                  "minLength": 1,
+                  "pattern": "^[0-9]+$"
                 }
               },
               "required": [
@@ -144,11 +134,7 @@
             }
           }
         },
-        "required": [
-          "uid",
-          "timezone",
-          "list"
-        ]
+        "required": ["uid", "timezone", "list"]
       }
     },
     "hkrpg": {
@@ -204,12 +190,7 @@
                 "gacha_type": {
                   "type": "string",
                   "description": "Gacha type",
-                  "enum": [
-                    "1",
-                    "2",
-                    "11",
-                    "12"
-                  ]
+                  "enum": ["1", "2", "11", "12"]
                 },
                 "item_id": {
                   "type": "string",
@@ -237,24 +218,17 @@
                 },
                 "id": {
                   "type": "string",
-                  "description": "The internal ID of the record, returned by MiHoYo API"
+                  "description": "The internal ID of the record, returned by MiHoYo API",
+                  "maxLength": 19,
+                  "minLength": 1,
+                  "pattern": "^[0-9]+$"
                 }
               },
-              "required": [
-                "gacha_type",
-                "gacha_id",
-                "time",
-                "item_id",
-                "id"
-              ]
+              "required": ["gacha_type", "gacha_id", "time", "item_id", "id"]
             }
           }
         },
-        "required": [
-          "uid",
-          "timezone",
-          "list"
-        ]
+        "required": ["uid", "timezone", "list"]
       }
     },
     "nap": {
@@ -310,12 +284,7 @@
                 "gacha_type": {
                   "type": "string",
                   "description": "Gacha type",
-                  "enum": [
-                    "1",
-                    "2",
-                    "3",
-                    "5"
-                  ]
+                  "enum": ["1", "2", "3", "5"]
                 },
                 "item_id": {
                   "type": "string",
@@ -343,27 +312,19 @@
                 },
                 "id": {
                   "type": "string",
-                  "description": "The internal ID of the record, returned by MiHoYo API"
+                  "description": "The internal ID of the record, returned by MiHoYo API",
+                  "maxLength": 19,
+                  "minLength": 1,
+                  "pattern": "^[0-9]+$"
                 }
               },
-              "required": [
-                "gacha_type",
-                "item_id",
-                "time",
-                "id"
-              ]
+              "required": ["gacha_type", "item_id", "time", "id"]
             }
           }
         },
-        "required": [
-          "uid",
-          "timezone",
-          "list"
-        ]
+        "required": ["uid", "timezone", "list"]
       }
     }
   },
-  "required": [
-    "info"
-  ]
+  "required": ["info"]
 }
