@@ -1,7 +1,7 @@
 <template>
   <div class="app-container">
     <div class="app-title">
-      <img src="/logo.png" alt="logo"/>
+      <img src="/logo.png" alt="logo" @click="toGithub()" title="前往仓库"/>
       <span>UIGF Schema Verify Tool</span>
     </div>
     <div class="app-actions">
@@ -160,6 +160,10 @@ function showErrData(error: ErrorObject) {
   }
   alert(JSON.stringify(data, null, 2));
 }
+
+function toGithub(): void {
+  window.open("https://github.com/UIGF-org/UIGF-SchemaVerify");
+}
 </script>
 
 
@@ -185,6 +189,11 @@ function showErrData(error: ErrorObject) {
 .app-title img {
   width: 40px;
   height: 40px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+  padding: 4px;
+  cursor: pointer;
 }
 
 .app-title span {
@@ -196,6 +205,7 @@ function showErrData(error: ErrorObject) {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  flex-wrap: wrap;
   width: 100%;
   gap: 10px;
 }
