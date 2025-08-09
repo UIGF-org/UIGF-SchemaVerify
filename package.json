@@ -1,7 +1,6 @@
 {
   "name": "uigf-schema-verify",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "packageManager": "pnpm@10.14.0",
   "scripts": {
