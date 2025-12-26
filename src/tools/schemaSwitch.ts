@@ -19,7 +19,7 @@ type SchemaList = {
  */
 export const schemaList: SchemaList = {
     [SchemaType.UIAF]: ['1.1'],
-    [SchemaType.UIGF]: ['3.0', '4.1'],
+    [SchemaType.UIGF]: ['3.0', '4.2'],
     [SchemaType.SRGF]: ['1.0'],
 }
 
