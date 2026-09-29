@@ -269,6 +269,7 @@ function toGithub(): void {
 @media (max-width: 768px) {
   .verify-body {
     flex-direction: column;
+    row-gap: 24px;
   }
 
   .verify-body > .verify-item {
@@ -279,6 +280,13 @@ function toGithub(): void {
 .verify-item {
   width: 49%;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.verify-item > .verify-box {
+  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .verify-title {
