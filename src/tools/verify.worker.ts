@@ -16,7 +16,9 @@ type ErrorDataRequest = {
     path: string;
 };
 
-type WorkerRequest = VerifyRequest | ErrorDataRequest;
+type WorkerRequest = VerifyRequest | ErrorDataRequest
+    | {type: 'prepare'; schemaType: SchemaType; version: string}
+    | {type: 'preview'; fileId: number};
 
 export type WorkerResponse =
     | {type: 'preview'; fileId: number; value: string; truncated: boolean; formatted: boolean}
@@ -29,9 +31,34 @@ let parsedFileId = -1;
 let latestRequestId = 0;
 const validators = new Map<string, ValidateFunction>();
 const ajv = new Ajv();
+let previewFileId = -1;
+let previewSentFileId = -1;
+let invalidPreview = '';
+
+function getValidator(schemaType: SchemaType, version: string) {
+    const key = `${schemaType}-${version}`;
+    let validate = validators.get(key);
+    if (!validate) {
+        validate = ajv.compile(getSchema(schemaType, version));
+        validators.set(key, validate);
+    }
+    return validate;
+}
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     const request = event.data;
+    if (request.type === 'prepare') {
+        // Compilation failures are reported by the next verification request.
+        try { getValidator(request.schemaType, request.version); } catch { /* retry on verify */ }
+        return;
+    }
+    if (request.type === 'preview') {
+        if (request.fileId !== previewFileId || previewSentFileId === request.fileId) return;
+        const formatted = parsedFileId === request.fileId;
+        sendPreview(formatted ? JSON.stringify(parsedData, null, 2) : invalidPreview, request.fileId, formatted);
+        previewSentFileId = request.fileId;
+        return;
+    }
     if (request.type === 'error-data') {
         let value = parsedData;
         for (const segment of request.path.split('/').slice(1)) {
@@ -53,23 +80,20 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         if (parsedFileId !== request.fileId) {
             const raw = await request.file.text();
             if (latestRequestId !== request.requestId) return;
+            previewFileId = request.fileId;
+            previewSentFileId = -1;
+            invalidPreview = '';
             let data: unknown;
             try {
                 data = JSON.parse(raw);
             } catch (error) {
-                sendPreview(raw, request.fileId, false);
+                invalidPreview = raw.slice(0, 100 * 1024 + 1);
                 throw error;
             }
-            sendPreview(JSON.stringify(data, null, 2), request.fileId, true);
             parsedData = data;
             parsedFileId = request.fileId;
         }
-        const schemaKey = `${request.schemaType}-${request.version}`;
-        let validate = validators.get(schemaKey);
-        if (!validate) {
-            validate = ajv.compile(getSchema(request.schemaType, request.version));
-            validators.set(schemaKey, validate);
-        }
+        const validate = getValidator(request.schemaType, request.version);
         const valid = validate(parsedData);
         if (latestRequestId !== request.requestId) return;
         self.postMessage({

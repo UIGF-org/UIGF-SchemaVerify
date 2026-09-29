@@ -93,6 +93,7 @@ function freshSchema(schemaType: SchemaType = curSchema.value, version: string =
   isVerifying.value = false;
   errorDataVisible.value = false;
   verifyResult.value = "";
+  getWorker().postMessage({type: 'prepare', schemaType, version: selectedVersion});
 }
 
 // 监听schema类型变化
@@ -190,6 +191,11 @@ function getWorker(): Worker {
     verifyResult.value = response.type === 'failure'
         ? response.message
         : response.valid ? 'Verification passed' : response.errors.length ? response.errors : 'Verification failed';
+    // Give the validation result a paint before generating and rendering JSON.
+    const previewFileId = fileId;
+    requestAnimationFrame(() => setTimeout(() => {
+      if (fileId === previewFileId) worker?.postMessage({type: 'preview', fileId: previewFileId});
+    }, 0));
   };
   worker.onerror = () => {
     worker?.terminate();
