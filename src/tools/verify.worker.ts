@@ -19,6 +19,7 @@ type ErrorDataRequest = {
 type WorkerRequest = VerifyRequest | ErrorDataRequest;
 
 export type WorkerResponse =
+    | {type: 'preview'; fileId: number; value: string; truncated: boolean; formatted: boolean}
     | {type: 'result'; requestId: number; valid: boolean; errors: ErrorObject[]}
     | {type: 'failure'; requestId: number; message: string}
     | {type: 'error-data'; requestId: number; value: string};
@@ -33,7 +34,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     const request = event.data;
     if (request.type === 'error-data') {
         let value = parsedData;
-        for (const segment of request.path.split('/').slice(1, 3)) {
+        for (const segment of request.path.split('/').slice(1)) {
             const key = segment.replace(/~1/g, '/').replace(/~0/g, '~');
             value = (value as Record<string, unknown> | undefined)?.[key];
         }
@@ -50,8 +51,16 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     latestRequestId = request.requestId;
     try {
         if (parsedFileId !== request.fileId) {
-            const data = JSON.parse(await request.file.text());
+            const raw = await request.file.text();
             if (latestRequestId !== request.requestId) return;
+            let data: unknown;
+            try {
+                data = JSON.parse(raw);
+            } catch (error) {
+                sendPreview(raw, request.fileId, false);
+                throw error;
+            }
+            sendPreview(JSON.stringify(data, null, 2), request.fileId, true);
             parsedData = data;
             parsedFileId = request.fileId;
         }
@@ -80,3 +89,14 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
         } satisfies WorkerResponse);
     }
 };
+
+function sendPreview(content: string, fileId: number, formatted: boolean) {
+    const limit = 100 * 1024;
+    const truncated = content.length > limit;
+    let value = content.slice(0, limit);
+    if (truncated) {
+        const lastLine = value.lastIndexOf('\n');
+        if (lastLine > 0) value = value.slice(0, lastLine);
+    }
+    self.postMessage({type: 'preview', fileId, value, truncated, formatted} satisfies WorkerResponse);
+}

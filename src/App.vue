@@ -34,27 +34,36 @@
     <div class="verify-body">
       <div class="verify-item">
         <div class="verify-title">File Content</div>
-        <div v-if="previewTruncated" class="preview-note">仅预览前 100 KB；验证使用完整文件。</div>
-        <textarea class="verify-box" :value="filePreview" readonly/>
+        <div v-if="selectedFile" class="preview-note">
+          {{ previewFormatted ? '已格式化 · 2 空格缩进' : '原始内容' }}
+          <span v-if="previewTruncated"> · 仅显示前约 10 万字符；验证使用完整文件。</span>
+        </div>
+        <JsonPreview class="verify-box" :content="filePreview" label="文件 JSON 预览"/>
       </div>
       <div class="verify-item">
         <div class="verify-title">
           <span>Schema</span>
         </div>
-        <textarea class="verify-box" :value="curSchemaContent" readonly/>
+        <JsonPreview class="verify-box" :content="curSchemaContent" label="Schema JSON"/>
       </div>
     </div>
+    <a-modal v-model:visible="errorDataVisible" title="错误数据" :footer="false" width="min(800px, 90vw)">
+      <a-alert type="error" class="error-data-message">{{ errorDataMessage }}</a-alert>
+      <div class="error-data-path">{{ errorDataPath }}</div>
+      <JsonPreview class="verify-box error-data-box" :content="errorData" label="错误数据 JSON"/>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import type {ErrorObject} from "ajv";
-import {computed, onBeforeUnmount, onMounted, ref, shallowRef, watch} from "vue";
+import {computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, shallowRef, watch} from "vue";
 import {RequestOption, UploadRequest} from "@arco-design/web-vue";
 import {getSchema, schemaList, SchemaType} from "./tools/schemaSwitch.ts";
 import type {WorkerResponse} from "./tools/verify.worker.ts";
 
-const previewLimit = 100 * 1024;
+const JsonPreview = defineAsyncComponent(() => import('./components/JsonPreview.vue'));
+
 let worker: Worker | undefined;
 let requestId = 0;
 let fileId = 0;
@@ -82,6 +91,7 @@ function freshSchema(schemaType: SchemaType = curSchema.value, version: string =
   schema.value = getSchema(schemaType, selectedVersion);
   requestId++;
   isVerifying.value = false;
+  errorDataVisible.value = false;
   verifyResult.value = "";
 }
 
@@ -96,6 +106,11 @@ const schema = shallowRef<any>({});
 const selectedFile = shallowRef<File | null>(null);
 const filePreview = ref("");
 const previewTruncated = ref(false);
+const previewFormatted = ref(false);
+const errorDataVisible = ref(false);
+const errorData = ref('');
+const errorDataPath = ref('');
+const errorDataMessage = ref('');
 const isVerifying = ref(false);
 //  验证结果
 const verifyResult = ref<string | Array<ErrorObject>>("");
@@ -125,14 +140,8 @@ function uploadFile(option: RequestOption): UploadRequest {
   selectedFile.value = file;
   fileId++;
   filePreview.value = "";
-  previewTruncated.value = file.size > previewLimit;
-  void file.slice(0, previewLimit).text()
-      .then((content) => {
-        if (selectedFile.value === file) filePreview.value = content;
-      })
-      .catch(() => {
-        if (selectedFile.value === file) filePreview.value = '预览读取失败';
-      });
+  previewTruncated.value = false;
+  previewFormatted.value = false;
   verify();
   option.onSuccess();
   return {};
@@ -146,6 +155,7 @@ function verify() {
   const currentWorker = getWorker();
   const currentRequestId = ++requestId;
   isVerifying.value = true;
+  errorDataVisible.value = false;
   verifyResult.value = "";
   currentWorker.postMessage({type: 'verify', requestId: currentRequestId, fileId, file,
     schemaType: curSchema.value, version: curVersion.value});
@@ -153,6 +163,8 @@ function verify() {
 
 // 显示错误数据
 function showErrData(error: ErrorObject) {
+  errorDataPath.value = error.instancePath;
+  errorDataMessage.value = error.message ?? 'Verification failed';
   worker?.postMessage({type: 'error-data', requestId, path: error.instancePath});
 }
 
@@ -161,9 +173,17 @@ function getWorker(): Worker {
   worker = new Worker(new URL('./tools/verify.worker.ts', import.meta.url), {type: 'module'});
   worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
     const response = event.data;
+    if (response.type === 'preview') {
+      if (response.fileId !== fileId) return;
+      filePreview.value = response.value;
+      previewTruncated.value = response.truncated;
+      previewFormatted.value = response.formatted;
+      return;
+    }
     if (response.requestId !== requestId) return;
     if (response.type === 'error-data') {
-      alert(response.value);
+      errorData.value = response.value;
+      errorDataVisible.value = true;
       return;
     }
     isVerifying.value = false;
@@ -252,6 +272,7 @@ function toGithub(): void {
 
 .verify-item {
   width: 49%;
+  min-width: 0;
 }
 
 .verify-title {
@@ -268,10 +289,26 @@ function toGithub(): void {
   width: 100%;
   height: calc(100vh - 200px);
   box-sizing: border-box;
-  padding: 10px;
+  padding: 0;
   border: 1px solid #ccc;
   border-radius: 5px;
-  overflow-y: auto;
+  color: #1d2129;
+  background: #f7f8fa;
+}
+
+.error-data-box {
+  height: 45vh;
+}
+
+.error-data-path {
+  margin-bottom: 12px;
+  font-family: monospace;
+  overflow-wrap: anywhere;
+}
+
+.error-data-message {
+  margin-bottom: 12px;
+  overflow-wrap: anywhere;
 }
 
 .preview-note {

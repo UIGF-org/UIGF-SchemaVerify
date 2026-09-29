@@ -10,6 +10,12 @@
     "fmt": "prettier --write src/**/*.json"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/search": "^6.7.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.13",
     "ajv": "^8.20.0",
     "vue": "^3.5.43"
   },
