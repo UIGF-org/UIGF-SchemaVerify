@@ -6,7 +6,7 @@
     </div>
     <div class="app-actions">
       <a-upload :show-file-list="false" :custom-request="uploadFile"></a-upload>
-      <a-button type="primary" @click="verify()">验证</a-button>
+      <a-button type="primary" :loading="isVerifying" :disabled="!selectedFile" @click="verify()">验证</a-button>
       <a-select v-model="curSchema" style="width: 100px">
         <a-option :value="SchemaType.UIGF">{{ SchemaType.UIGF.toUpperCase() }}</a-option>
         <a-option :value="SchemaType.UIAF">{{ SchemaType.UIAF.toUpperCase() }}</a-option>
@@ -21,7 +21,7 @@
       <a-alert type="error" v-else>
         <span v-if="typeof verifyResult === 'string'">{{ verifyResult }}</span>
         <ul v-else>
-          <li v-for="error in verifyResult" :key="error.instancePath">
+          <li v-for="error in verifyResult" :key="error.schemaPath">
             <span class="error-path">{{ error.instancePath || error.schemaPath }}:&emsp;</span>
             <span class="error-message">{{ error.message }}</span>
             <span style="margin-left: auto" v-if="error.instancePath!==''">
@@ -34,25 +34,30 @@
     <div class="verify-body">
       <div class="verify-item">
         <div class="verify-title">File Content</div>
-        <a-textarea class="verify-box" v-model="fileContent" readonly auto-size/>
+        <div v-if="previewTruncated" class="preview-note">仅预览前 100 KB；验证使用完整文件。</div>
+        <textarea class="verify-box" :value="filePreview" readonly/>
       </div>
       <div class="verify-item">
         <div class="verify-title">
           <span>Schema</span>
         </div>
-        <a-textarea class="verify-box" v-model="curSchemaContent" readonly auto-size/>
+        <textarea class="verify-box" :value="curSchemaContent" readonly/>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import Ajv, {ErrorObject, ValidateFunction} from "ajv";
-import {computed, onMounted, ref, watch} from "vue";
+import type {ErrorObject} from "ajv";
+import {computed, onBeforeUnmount, onMounted, ref, shallowRef, watch} from "vue";
 import {RequestOption, UploadRequest} from "@arco-design/web-vue";
 import {getSchema, schemaList, SchemaType} from "./tools/schemaSwitch.ts";
+import type {WorkerResponse} from "./tools/verify.worker.ts";
 
-const validate = ref<ValidateFunction | undefined>(undefined);
+const previewLimit = 100 * 1024;
+let worker: Worker | undefined;
+let requestId = 0;
+let fileId = 0;
 
 // 当前schema类型
 const curSchema = ref<SchemaType>(SchemaType.UIGF);
@@ -75,7 +80,8 @@ function freshSchema(schemaType: SchemaType = curSchema.value, version: string =
   const selectedVersion = versions.includes(version) ? version : versions[0];
   curVersion.value = selectedVersion;
   schema.value = getSchema(schemaType, selectedVersion);
-  validate.value = new Ajv().compile(schema.value);
+  requestId++;
+  isVerifying.value = false;
   verifyResult.value = "";
 }
 
@@ -86,9 +92,11 @@ watch(curSchema, (value: SchemaType) => freshSchema(value));
 watch(curVersion, (value: string) => freshSchema(curSchema.value, value));
 
 // schema 文件内容
-const schema = ref<any>({});
-// 文件内容
-const fileContent = ref<string>("");
+const schema = shallowRef<any>({});
+const selectedFile = shallowRef<File | null>(null);
+const filePreview = ref("");
+const previewTruncated = ref(false);
+const isVerifying = ref(false);
 //  验证结果
 const verifyResult = ref<string | Array<ErrorObject>>("");
 // 是否验证成功
@@ -114,50 +122,67 @@ function uploadFile(option: RequestOption): UploadRequest {
     option.onError();
     return {};
   }
-  const reader = new FileReader();
-  try {
-    reader.onload = (e) => {
-      fileContent.value = e.target?.result as string;
-      verify();
-    };
-    reader.readAsText(file);
-    option.onSuccess();
-  } catch (e) {
-    option.onError();
-  }
+  selectedFile.value = file;
+  fileId++;
+  filePreview.value = "";
+  previewTruncated.value = file.size > previewLimit;
+  void file.slice(0, previewLimit).text()
+      .then((content) => {
+        if (selectedFile.value === file) filePreview.value = content;
+      })
+      .catch(() => {
+        if (selectedFile.value === file) filePreview.value = '预览读取失败';
+      });
+  verify();
+  option.onSuccess();
   return {};
 }
 
 // 验证
 function verify() {
-  if (validate.value === undefined) {
-    console.error("Schema is not loaded");
-    return;
-  }
-  try {
-    const data = JSON.parse(fileContent.value);
-    const valid = validate.value(data);
-    if (valid) {
-      verifyResult.value = "Verification passed";
-      return;
-    }
-    verifyResult.value = validate.value.errors || "Verification failed";
-    console.log(validate.value.errors);
-  } catch (e) {
-    verifyResult.value = "Verification failed\n" + e;
-  }
+  const file = selectedFile.value;
+  if (!file) return;
+
+  const currentWorker = getWorker();
+  const currentRequestId = ++requestId;
+  isVerifying.value = true;
+  verifyResult.value = "";
+  currentWorker.postMessage({type: 'verify', requestId: currentRequestId, fileId, file,
+    schemaType: curSchema.value, version: curVersion.value});
 }
 
 // 显示错误数据
 function showErrData(error: ErrorObject) {
-  const path = error.instancePath.split("/").filter((item) => item);
-  let data = JSON.parse(fileContent.value);
-  // 最多深入两层
-  for (let i = 0; i < Math.min(path.length, 2); i++) {
-    data = data[path[i]];
-  }
-  alert(JSON.stringify(data, null, 2));
+  worker?.postMessage({type: 'error-data', requestId, path: error.instancePath});
 }
+
+function getWorker(): Worker {
+  if (worker) return worker;
+  worker = new Worker(new URL('./tools/verify.worker.ts', import.meta.url), {type: 'module'});
+  worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+    const response = event.data;
+    if (response.requestId !== requestId) return;
+    if (response.type === 'error-data') {
+      alert(response.value);
+      return;
+    }
+    isVerifying.value = false;
+    verifyResult.value = response.type === 'failure'
+        ? response.message
+        : response.valid ? 'Verification passed' : response.errors.length ? response.errors : 'Verification failed';
+  };
+  worker.onerror = () => {
+    worker?.terminate();
+    worker = undefined;
+    if (isVerifying.value) {
+      isVerifying.value = false;
+      verifyResult.value = 'Verification failed: worker error';
+    }
+  };
+  return worker;
+}
+
+onBeforeUnmount(() => worker?.terminate());
 
 function toGithub(): void {
   window.open("https://github.com/UIGF-org/UIGF-SchemaVerify");
@@ -242,10 +267,16 @@ function toGithub(): void {
 .verify-box {
   width: 100%;
   height: calc(100vh - 200px);
+  box-sizing: border-box;
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 5px;
   overflow-y: auto;
+}
+
+.preview-note {
+  margin-bottom: 6px;
+  color: #666;
 }
 
 .verify-result {
