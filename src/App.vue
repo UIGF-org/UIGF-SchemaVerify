@@ -52,8 +52,6 @@ import {computed, onMounted, ref, watch} from "vue";
 import {RequestOption, UploadRequest} from "@arco-design/web-vue";
 import {getSchema, schemaList, SchemaType} from "./tools/schemaSwitch.ts";
 
-const ajv = new Ajv();
-
 const validate = ref<ValidateFunction | undefined>(undefined);
 
 // 当前schema类型
@@ -61,31 +59,31 @@ const curSchema = ref<SchemaType>(SchemaType.UIGF);
 const curVersion = ref<string>("");
 const curSchemaContent = computed(() => JSON.stringify(schema.value, null, 2));
 
-onMounted(async () => {
+onMounted(() => {
   const url = new URL(window.location.href);
   const schemaType = url.searchParams.get("schema");
   const check = [SchemaType.UIGF, SchemaType.UIAF, SchemaType.SRGF];
   if (check.includes(schemaType as SchemaType)) {
     curSchema.value = schemaType as SchemaType;
   }
-  await freshSchema(curSchema.value);
+  freshSchema(curSchema.value);
 });
 
 // freshSchema
-async function freshSchema(schemaType: SchemaType = curSchema.value, version: string = curVersion.value) {
+function freshSchema(schemaType: SchemaType = curSchema.value, version: string = curVersion.value) {
   const versions = schemaList[schemaType];
-  if (!versions.includes(version)) {
-    curVersion.value = versions[0];
-  }
-  schema.value = await getSchema(schemaType, curVersion.value);
-  validate.value = ajv.compile(schema.value);
+  const selectedVersion = versions.includes(version) ? version : versions[0];
+  curVersion.value = selectedVersion;
+  schema.value = getSchema(schemaType, selectedVersion);
+  validate.value = new Ajv().compile(schema.value);
+  verifyResult.value = "";
 }
 
 // 监听schema类型变化
-watch(curSchema, async (value: SchemaType) => await freshSchema(value));
+watch(curSchema, (value: SchemaType) => freshSchema(value));
 
 // 监听版本变化
-watch(curVersion, async (value: string) => await freshSchema(curSchema.value, value));
+watch(curVersion, (value: string) => freshSchema(curSchema.value, value));
 
 // schema 文件内容
 const schema = ref<any>({});

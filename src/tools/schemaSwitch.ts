@@ -19,7 +19,7 @@ type SchemaList = {
  */
 export const schemaList: SchemaList = {
     [SchemaType.UIAF]: ['1.1'],
-    [SchemaType.UIGF]: ['3.0', '4.2'],
+    [SchemaType.UIGF]: ['4.2', '3.0'],
     [SchemaType.SRGF]: ['1.0'],
 }
 
@@ -29,9 +29,13 @@ export const schemaList: SchemaList = {
  * @param version schema版本
  * @returns schema
  */
-export async function getSchema(schemaType: SchemaType, version: string): Promise<any> {
+const schemaFiles = import.meta.glob('../source/*-schema.json', { eager: true, import: 'default' });
+
+export function getSchema(schemaType: SchemaType, version: string): any {
     const schemaPath = `../source/${schemaType}-${version}-schema.json`;
-    const schemaJson = import.meta.glob('../source/*-schema.json');
-    const schemaFile = await schemaJson[schemaPath]() as { default: any };
-    return schemaFile.default;
+    const schema = schemaFiles[schemaPath];
+    if (!schema) {
+        throw new Error(`Schema not found: ${schemaType} ${version}`);
+    }
+    return schema;
 }
